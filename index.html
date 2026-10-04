@@ -355,7 +355,7 @@ textarea{min-height:70px}
 <dialog id="dlg">
   <form id="form">
     <h2 id="ftitle" tabindex="-1" autofocus>Tambah jadual</h2>
-    <label><b data-t="fName">Nama penuh</b><input name="nama" required autocomplete="name"></label>
+    <label><b data-t="fName">Nama penuh</b><input name="nama" required maxlength="120" autocomplete="name"></label>
     <label><b data-t="fDate">Tarikh</b><input name="tarikh" type="date" required></label>
     <div class="two">
       <label><b data-t="fStart">Mula</b><input name="mula" type="time" required></label>
@@ -383,7 +383,7 @@ const T={
   failed:'Jadual tidak dapat dimuatkan. Semak sambungan internet dan muat semula halaman.',setup:'Laman ini belum disambungkan ke pangkalan data. Pemilik perlu isi fail firebase-config.js (lihat README).',
   today:'Hari ini',open:'Buka pautan',meet:'Sertai Meet',nolink:'Tiada pautan lagi',done:'Selesai',
   days:['Ahd','Isn','Sel','Rab','Kha','Jum','Sab'],months:['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'],
-  badLink:'Pautan tidak sah. Semak semula.',saved:'Disimpan.',deleted:'Dipadam.',confirmDel:n=>'Padam jadual '+n+'?',
+  badLink:'Pautan tidak sah. Semak semula.',longLink:'Pautan terlalu panjang (maksimum 500 aksara). Guna pautan pendek.',saved:'Disimpan.',deleted:'Dipadam.',confirmDel:n=>'Padam jadual '+n+'?',
   readonly:'Perubahan tidak dibenarkan oleh tetapan pangkalan data.',badName:'Sila isi nama penuh.',badTime:'Masa tamat mesti selepas masa mula.',dupe:'Nama ini sudah ada. Sila ubah jadual sedia ada.',conn:'Sambungan terputus. Sila muat semula halaman.',gone:'Jadual ini telah dipadam oleh pengguna lain.',full:'Ruang simpanan penuh. Padam jadual lama dahulu.',dupeEdit:'Nama ini sudah ada dalam senarai.',saveFail:'Tidak dapat menyimpan. Cuba sekali lagi.'},
  en:{liveOn:'Live',liveOff:'Reconnecting…',show:'Show',hide:'Hide',svLabel:'Supervisor:',sub:'Teaching practicum',upcoming:'Upcoming',past:'Past',title:'Observation schedule',obs1:'Observation 1',obs2:'Observation 2',add:'+ Add my schedule',loading:'Loading…',
   fName:'Full name',fDate:'Date',fStart:'Start',fEnd:'End',fLink:'Video / lesson plan / Meet link',fLinkHint:'(can be added later)',fNote:'Note',fNoteHint:'(optional)',notePh:'Example: subject, class, topic',
@@ -392,7 +392,7 @@ const T={
   failed:'The schedule could not load. Check your internet connection and reload.',setup:'This site is not connected to its database yet. The owner needs to fill in firebase-config.js (see README).',
   today:'Today',open:'Open link',meet:'Join Meet',nolink:'No link yet',done:'Done',
   days:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-  badLink:'That link is not valid. Please check it.',saved:'Saved.',deleted:'Deleted.',confirmDel:n=>'Delete the schedule for '+n+'?',
+  badLink:'That link is not valid. Please check it.',longLink:'That link is too long (max 500 characters). Use a shorter link.',saved:'Saved.',deleted:'Deleted.',confirmDel:n=>'Delete the schedule for '+n+'?',
   readonly:'Changes are not allowed by the database settings.',badName:'Please enter your full name.',badTime:'End time must be after start time.',dupe:'This name already has a schedule. Please edit the existing one.',conn:'Connection lost. Please reload the page.',gone:'This schedule was deleted by someone else.',full:'Storage is full. Delete old schedules first.',dupeEdit:'This name is already in the list.',saveFail:'Could not save. Please try again.'}
 };
 let LANG='ms';try{if(localStorage.getItem('lang')==='en')LANG='en';}catch(e){}
@@ -493,6 +493,7 @@ $('#form').addEventListener('submit',async e=>{
   const nama=titleName(f.nama.value),pautan=safeUrl(f.pautan.value);
   if(!nama){toast(L('badName'));f.nama.focus();return;}
   if(f.pautan.value.trim()&&!pautan){toast(L('badLink'));return;}
+  if(pautan.length>500){toast(L('longLink'));f.pautan.focus();return;}
   if(f.tamat.value&&f.tamat.value<=f.mula.value){toast(L('badTime'));return;}
   const old=S.editing&&S.rows.find(x=>x.id===S.editing);
   const obsNo=old?Number(old.pemerhatian||1):S.obs;
@@ -507,9 +508,9 @@ $('#form').addEventListener('submit',async e=>{
   try{
     const ref=S.db.collection('sesi').doc(id);
     if(old){const{nama:a,tarikh:b,mula:c,tamat:d,pautan:e2,mod:m,catatan:n2,dikemaskini:k}=data;await withRetry(()=>ref.update({nama:a,tarikh:b,mula:c,tamat:d,pautan:e2,mod:m,catatan:n2,dikemaskini:k}));}
-    else await withRetry(()=>ref.set(data));
+    else await S.db.runTransaction(async tx=>{if((await tx.get(ref)).exists)throw{code:'dupe-id'};tx.set(ref,data);}); // never overwrite a record another device just created
     $('#dlg').close();toast(L('saved'));}
-  catch(err){writeErr(err,old?id:null);}finally{$('#save').disabled=false;}
+  catch(err){if(err&&err.code==='dupe-id')toast(L('dupe'));else writeErr(err,old?id:null);}finally{$('#save').disabled=false;}
 });
 $('#del').addEventListener('click',async()=>{
   const r=S.rows.find(x=>x.id===S.editing);if(!r||!confirm(L('confirmDel')(r.nama)))return;
@@ -560,7 +561,8 @@ setInterval(()=>{const d=today();if(d!==lastDay&&!document.hidden&&!$('#dlg').op
 const SEED={"ahmad-rafaie-bin-mat-p1": {"nama": "Ahmad Rafaie bin Mat", "pemerhatian": 1, "tarikh": "2026-09-29", "mula": "12:00", "tamat": "13:00", "mod": "video", "pautan": "", "catatan": "Video dan RPH pada emel", "dinilai": false}, "alyaa-abdul-aziz-p1": {"nama": "Alyaa Abdul Aziz", "pemerhatian": 1, "tarikh": "2026-09-24", "mula": "10:00", "tamat": "11:00", "mod": "video", "pautan": "", "catatan": "Link video dan rph dalam email", "dinilai": true}, "amsyar-p1": {"nama": "Amsyar", "pemerhatian": 1, "tarikh": "2026-09-27", "mula": "11:40", "tamat": "", "mod": "langsung", "pautan": "", "catatan": "Link gmeet dan rph dalam email", "dinilai": true}, "farah-adila-binti-mohd-ghazali-p1": {"nama": "Farah Adila binti Mohd Ghazali", "pemerhatian": 1, "tarikh": "2026-10-11", "mula": "11:20", "tamat": "12:20", "mod": "video", "pautan": "", "catatan": "Video dan RPH pada emel", "dinilai": false}, "fittrie-bin-osman-p1": {"nama": "Fittrie bin Osman", "pemerhatian": 1, "tarikh": "2026-10-07", "mula": "08:00", "tamat": "09:00", "mod": "video", "pautan": "", "catatan": "Video dan RPH dalam email", "dinilai": false}, "marina-binti-abdullah-p1": {"nama": "Marina binti Abdullah", "pemerhatian": 1, "tarikh": "2026-09-22", "mula": "12:15", "tamat": "13:15", "mod": "video", "pautan": "", "catatan": "Video dan rph dalam Email.", "dinilai": true}, "mohd-fikri-bin-hazman-p1": {"nama": "Mohd Fikri bin Hazman", "pemerhatian": 1, "tarikh": "2026-09-28", "mula": "16:30", "tamat": "17:30", "mod": "video", "pautan": "", "catatan": "Video dan RPH pada emel", "dinilai": true}, "noor-malia-binti-mohamed-p1": {"nama": "Noor Malia binti Mohamed", "pemerhatian": 1, "tarikh": "2026-10-06", "mula": "13:40", "tamat": "14:40", "mod": "video", "pautan": "", "catatan": "Video & RPH dalam email", "dinilai": false}, "nur-atikah-binti-ramly-p1": {"nama": "Nur Atikah binti Ramly", "pemerhatian": 1, "tarikh": "2026-09-30", "mula": "06:45", "tamat": "07:45", "mod": "video", "pautan": "", "catatan": "Video dan RPH pada emel", "dinilai": false}, "nur-natasya-binti-md-hanif-p1": {"nama": "Nur Natasya binti Md Hanif", "pemerhatian": 1, "tarikh": "2026-09-30", "mula": "09:00", "tamat": "10:00", "mod": "video", "pautan": "", "catatan": "Video & RPH dalam email", "dinilai": false}, "nurfaizatulhikmah-binti-abu-hassan-p1": {"nama": "Nurfaizatulhikmah binti Abu Hassan", "pemerhatian": 1, "tarikh": "2026-10-01", "mula": "10:20", "tamat": "11:40", "mod": "video", "pautan": "", "catatan": "Video dan RPH dalam email", "dinilai": false}, "nurul-farah-ain-binti-muhammad-firdaus-p1": {"nama": "Nurul Farah Ain binti Muhammad Firdaus", "pemerhatian": 1, "tarikh": "2026-10-05", "mula": "10:15", "tamat": "11:15", "mod": "video", "pautan": "", "catatan": "Video dan RPH pada email", "dinilai": false}, "siti-nur-aiman-fasihah-binti-amran-p1": {"nama": "Siti Nur Aiman Fasihah binti Amran", "pemerhatian": 1, "tarikh": "2026-09-30", "mula": "10:10", "tamat": "11:10", "mod": "video", "pautan": "", "catatan": "Video & RPH dalam email", "dinilai": false}, "syazwan-bin-mohd-pozi-p1": {"nama": "Syazwan bin Mohd Pozi", "pemerhatian": 1, "tarikh": "2026-09-30", "mula": "08:45", "tamat": "09:45", "mod": "video", "pautan": "", "catatan": "Video dan RPH dalam email", "dinilai": false}, "tuan-seri-kuning-binti-mohd-zaki-p1": {"nama": "Tuan Seri Kuning binti Mohd Zaki", "pemerhatian": 1, "tarikh": "2026-10-01", "mula": "10:45", "tamat": "11:45", "mod": "video", "pautan": "", "catatan": "Video dan rph dalam email", "dinilai": false}, "ummi-kalsum-binti-bakshad-p1": {"nama": "Ummi Kalsum binti Bakshad", "pemerhatian": 1, "tarikh": "2026-10-01", "mula": "11:40", "tamat": "13:00", "mod": "video", "pautan": "", "catatan": "Video dan RPH dalam email", "dinilai": false}};
 (async()=>{
   const cfg=window.FIREBASE_CONFIG;
-  if(!window.firebase||!cfg||!cfg.apiKey||/ISI_|YOUR_/.test(cfg.apiKey)){S.failed='setup';render();return;}
+  if(!window.firebase){S.failed=true;render();return;} // SDK blocked or offline, not a setup problem
+  if(!cfg||!cfg.apiKey||/ISI_|YOUR_/.test(cfg.apiKey)){S.failed='setup';render();return;}
   let db;
   try{firebase.initializeApp(cfg);db=firebase.firestore();}catch(e){S.failed=true;render();return;}
   S.db=db;
@@ -586,7 +588,7 @@ const SEED={"ahmad-rafaie-bin-mat-p1": {"nama": "Ahmad Rafaie bin Mat", "pemerha
       S.loaded=true;render();
     });
   unsub=subscribe();
-  window.__resub=()=>{try{unsub&&unsub();}catch(_){}unsub=subscribe();};
+  window.__resub=()=>{try{unsub&&unsub();}catch(_){}retries=0;unsub=subscribe();};
 })();
 })();
 </script>

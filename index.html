@@ -552,7 +552,19 @@ document.addEventListener('toggle',e=>{
   S.pastOpen=e.target.open;
   const c=e.target.querySelector('.chev');if(c)c.firstChild.textContent=S.pastOpen?L('hide'):L('show');
 },true);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+// New site version published: reload so everyone gets it within minutes (never while the form is open)
+const APP_VERSION='2026-10-04.2';
+function checkUpdate(){
+  if($('#dlg').open)return;
+  fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j||!j.v||j.v===APP_VERSION||$('#dlg').open)return;
+    try{if(sessionStorage.getItem('upd')===j.v)return;sessionStorage.setItem('upd',j.v);}catch(e){}
+    location.replace(location.pathname+'?v='+encodeURIComponent(j.v));
+  }).catch(()=>{});
+}
+setInterval(()=>{if(!document.hidden)checkUpdate();},120000);
+checkUpdate();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();checkUpdate();}});
 window.addEventListener('offline',()=>{if(S.db)setLive(false);});
 window.addEventListener('online',()=>{if(S.db&&window.__resub)window.__resub();});
 let lastDay=today();

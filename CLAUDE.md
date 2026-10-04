@@ -33,3 +33,6 @@ Doc `meta/seed` marks that the 16 original records (embedded as `SEED` in index.
 4. Open the live site once to trigger the one-time seed, and confirm all 16 records appear.
 
 Ask before creating the repo public/private and before any destructive git operation.
+
+## Releasing changes (owner wants updates live ASAP)
+Every change to the site: bump `APP_VERSION` in index.html **and** `v` in `version.json` to the same new value, commit, push to `main`, then confirm the Pages build finished. Open pages poll `version.json` (every 2 min and when the tab becomes visible) and reload themselves onto the new version, skipping while the form dialog is open.

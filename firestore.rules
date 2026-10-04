@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Jadual pemerhatian: sesiapa yang ada pautan laman boleh baca dan kemas kini.
+    match /sesi/{id} {
+      allow read: if true;
+      allow delete: if true;
+      allow create, update: if validSesi(request.resource.data);
+    }
+
+    // Penanda data awal (sekali sahaja)
+    match /meta/seed {
+      allow read: if true;
+      allow create: if true;
+    }
+
+    function validSesi(d) {
+      return d.keys().hasOnly(['nama','pemerhatian','tarikh','mula','tamat','mod','pautan','catatan','dinilai','dikemaskini'])
+        && d.nama is string && d.nama.size() > 0 && d.nama.size() <= 120
+        && d.pemerhatian in [1, 2]
+        && d.tarikh is string && d.tarikh.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.mula is string && d.mula.size() <= 5
+        && (!('tamat' in d) || (d.tamat is string && d.tamat.size() <= 5))
+        && (!('pautan' in d) || (d.pautan is string && d.pautan.size() <= 500))
+        && (!('catatan' in d) || (d.catatan is string && d.catatan.size() <= 500))
+        && (!('dinilai' in d) || d.dinilai is bool);
+    }
+  }
+}

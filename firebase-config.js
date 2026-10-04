@@ -1,10 +1,10 @@
 // Tampal konfigurasi Firebase anda di sini (Firebase console > Project settings > Your apps > Web app > Config).
 // Nilai ini selamat untuk diletak dalam repo awam; keselamatan data dikawal oleh firestore.rules.
 window.FIREBASE_CONFIG = {
-  apiKey: "ISI_API_KEY",
-  authDomain: "ISI_PROJECT_ID.firebaseapp.com",
-  projectId: "ISI_PROJECT_ID",
-  storageBucket: "ISI_PROJECT_ID.appspot.com",
-  messagingSenderId: "ISI_SENDER_ID",
-  appId: "ISI_APP_ID"
+  apiKey: "AIzaSyDsgwdQsxE0A_4V2BUYumyhX7ybxsbxv3w",
+  authDomain: "jadual-pemerhatian-tehling.firebaseapp.com",
+  projectId: "jadual-pemerhatian-tehling",
+  storageBucket: "jadual-pemerhatian-tehling.firebasestorage.app",
+  messagingSenderId: "704115747554",
+  appId: "1:704115747554:web:9de8155e9fc4cf4731ccbb"
 };

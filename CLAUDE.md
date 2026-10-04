@@ -35,4 +35,4 @@ Doc `meta/seed` marks that the 16 original records (embedded as `SEED` in index.
 Ask before creating the repo public/private and before any destructive git operation.
 
 ## Releasing changes (owner wants updates live ASAP)
-Every change to the site: bump `APP_VERSION` in index.html **and** `v` in `version.json` to the same new value, commit, push to `main`, then confirm the Pages build finished. Open pages poll `version.json` (every 2 min and when the tab becomes visible) and reload themselves onto the new version, skipping while the form dialog is open.
+Every change to the site: bump `APP_VERSION` in index.html **and** `v` in `version.json` to the same new value, commit, push to `main`, then run `./release.sh`. It waits for the Pages build, then writes the version to Firestore `meta/app`; every open page listens to that doc in realtime and reloads onto the new version (after confirming via `version.json`, and not while the form dialog is open). If `firestore.rules` changed, deploy it with the Firebase CLI first.

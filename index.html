@@ -523,7 +523,7 @@ $('#form').addEventListener('focusin',e=>{
   if(!/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
   setTimeout(()=>{try{e.target.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}} ,320);
 });
-$('#dlg').addEventListener('close',()=>document.documentElement.classList.remove('lock'));
+$('#dlg').addEventListener('close',()=>{document.documentElement.classList.remove('lock');if(window.checkUpdate)setTimeout(window.checkUpdate,500);});
 $('#dlg').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close();});
 $('#add').addEventListener('click',()=>openForm(null));
 document.addEventListener('click',async e=>{
@@ -552,8 +552,10 @@ document.addEventListener('toggle',e=>{
   S.pastOpen=e.target.open;
   const c=e.target.querySelector('.chev');if(c)c.firstChild.textContent=S.pastOpen?L('hide'):L('show');
 },true);
-// New site version published: reload so everyone gets it within minutes (never while the form is open)
-const APP_VERSION='2026-10-04.2';
+// New site version published: reload so everyone gets it right away (never while the form is open).
+// Triggered in realtime by meta/app (see release.sh); version.json confirms the new build is live first.
+const APP_VERSION='2026-10-04.3';
+window.checkUpdate=checkUpdate;
 function checkUpdate(){
   if($('#dlg').open)return;
   fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
@@ -562,7 +564,6 @@ function checkUpdate(){
     location.replace(location.pathname+'?v='+encodeURIComponent(j.v));
   }).catch(()=>{});
 }
-setInterval(()=>{if(!document.hidden)checkUpdate();},120000);
 checkUpdate();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();checkUpdate();}});
 window.addEventListener('offline',()=>{if(S.db)setLive(false);});
@@ -600,6 +601,7 @@ const SEED={"ahmad-rafaie-bin-mat-p1": {"nama": "Ahmad Rafaie bin Mat", "pemerha
       S.loaded=true;render();
     });
   unsub=subscribe();
+  db.collection('meta').doc('app').onSnapshot(s=>{if(s.exists)checkUpdate();},()=>{});
   window.__resub=()=>{try{unsub&&unsub();}catch(_){}retries=0;unsub=subscribe();};
 })();
 })();
